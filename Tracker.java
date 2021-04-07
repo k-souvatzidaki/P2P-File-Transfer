@@ -7,18 +7,24 @@ public class Tracker {
     ServerSocket socket;
     String ip;
     int port;
-    HashMap<String,PeerInfo> peers;
+    HashMap<String,ArrayList<String>> registered_peers; //key: username, value: (user_name,	password, count_downloads, count_failures)
+    HashMap<Integer,ArrayList<String>> loggedin_peers; //key: token_id, value: 	(ip_address, port,	user_name)
+    ArrayList<String> file_names; //list of all file names
+    HashMap<String,ArrayList<Integer>> files_peers; //key: file name, value: list of token_ids with this file
 
     //constructor
     public Tracker(String ip, int port) {
         this.ip = ip;
         this.port = port;
-        peers = new HashMap<String,PeerInfo>();
+        registered_peers = new HashMap<String,ArrayList<String>>();
+        loggedin_peers = new HashMap<Integer,ArrayList<String>>();
+        file_names = new ArrayList<String>();
+        files_peers = new HashMap<String,ArrayList<Integer>>();
+
         accept_requests();
-        
     }
 
-    //ServerSocket accepting requests from Peers
+    //ServerSocket accepting login, logout and register requests from Peers
     public void accept_requests() {
         try {
             socket = new ServerSocket(port,100);
@@ -51,44 +57,69 @@ public class Tracker {
                             System.out.println("Received a new request from a peer : "+type);
                             //REGISTER
                             if(type.equals("REGISTER")) {
-                                username = (String)input.readObject();
-                                if(peers.containsKey(username)) {
-                                    System.out.println("Username Declined");
-                                    //peer with sent username already exists
-                                    output.writeObject("DECLINED"); output.flush();
-                                }else {
-                                    System.out.println("Username Accepted");
-                                    output.writeObject("ACCEPTED"); output.flush();
-                                    //read the password
-                                    password = (String)input.readObject();
-                                    //register new peer
-                                    peers.put(username, new PeerInfo(username,password,0,0));
-                                    System.out.println("Successfully registered peer with username "+username+" and password "+password);
+                                while(true) {
+                                    username = (String)input.readObject();
+                                    if(registered_peers.containsKey(username)) {
+                                        System.out.println("Username Already Exists. Request new.");
+                                        output.writeObject("DECLINED"); output.flush();
+                                    }else {
+                                        System.out.println("Username Accepted");
+                                        output.writeObject("ACCEPTED"); output.flush();
+                                        break;
+                                    }
                                 }
+                                password = (String)input.readObject(); //read the password
+                                registered_peers.put(username, new ArrayList<String>(Arrays.asList(username,password,"0","0"))); //register new peer
+                                System.out.println("Successfully registered peer with username "+username+" and password "+password);
                             }
                             //LOGIN
                             else if(type.equals("LOGIN")) {
-                                username = (String)input.readObject();
-                                if(peers.containsKey(username)) {
-                                    System.out.println("Request Password");
-                                    output.writeObject("ACCEPTED"); output.flush();
-                                    password = (String)input.readObject();
-                                    if(password.equals(peers.get(username).getPassword())) {
-                                        System.out.println("Password accepted! Login Successful");
+                                int token = 0;
+                                while(true) {
+                                    username = (String)input.readObject();
+                                    if(registered_peers.containsKey(username)) {
+                                        System.out.println("Request Password");
                                         output.writeObject("ACCEPTED"); output.flush();
+                                        break;
+                                    }else {
+                                        System.out.println("Username doesn't exist");
+                                        output.writeObject("DECLINED"); output.flush();
+                                    }
+                                }
+                                while(true) {
+                                    password = (String)input.readObject();
+                                    if(password.equals(registered_peers.get(username).get(1))) {
+                                        System.out.println("Password accepted! Login Successful");
+                                        token = new Random().nextInt();
+                                        System.out.println(token);
+                                        output.writeObject(String.valueOf(token)); output.flush();
+                                        break;
                                     }else{
                                         System.out.println("Wrong Password");
                                         output.writeObject("DECLINED"); output.flush();
-                                        //TODO receive new password
                                     }
-                                }else {
-                                    System.out.println("Username doesn't exist");
-                                    output.writeObject("DECLINED"); output.flush();
-                                    //TODO receive new username
                                 }
 
-                            }
+                                System.out.println("Getting peer information");
+                                String ip = (String)input.readObject();
+                                String port = (String)input.readObject();
+                                ArrayList<String> peer_files = (ArrayList<String>)input.readObject();
+                                System.out.println("Peer ip: "+ip+", port = "+port);
+                                for(String s: peer_files) System.out.println(s);
+                                //add info to hashmaps
+                                loggedin_peers.put(token,new ArrayList<String>(Arrays.asList(ip,port,username)));
+                                for(String s: peer_files){
+                                    file_names.add(s);
+                                    if(!files_peers.containsKey(s)) files_peers.put(s,new ArrayList<Integer>(Arrays.asList(token)));
+                                    else files_peers.get(s).add(token);
+                                }
 
+                                //check
+                                System.out.println(files_peers);
+                                System.out.println(loggedin_peers);
+                                
+                                
+                            }
                         }catch(IOException | ClassNotFoundException e) {
                             e.printStackTrace();
                         }
@@ -99,19 +130,6 @@ public class Tracker {
             e.printStackTrace();
         }
         
-    }
-
-
-    public void register() {
-
-    }
-
-    public void login() {
-
-    }
-
-    public void logout() {
-
     }
 
     public static void main(String[] args) {

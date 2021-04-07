@@ -26,6 +26,7 @@ public class PeerInfo {
     public int getCountFailures() {
         return this.count_failures;
     }
+    
 
     //TODO add setters 
 }

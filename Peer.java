@@ -94,7 +94,8 @@ public class Peer {
 
                                     //CHECKACTIVE
                                     if(type.equals("CHECKACTIVE")) {
-
+                                        System.out.println("Received a checkactive request");
+                                        output.writeObject("OK"); output.flush();
                                     }
                                     
                                 }catch(IOException | ClassNotFoundException e) {
@@ -276,7 +277,14 @@ public class Peer {
             output.writeObject("DETAILS"); output.flush(); //send type
             output.writeObject(filename); output.flush(); //send type
             reply = (String)input.readObject();
-            if(reply.equals("OK")) System.out.println("Request sent succesfully");
+            HashMap<Integer, ArrayList<String>> details_reply;
+            if(reply.equals("FILE DOESN'T EXIST")) {
+                System.out.println("File doesn't exist");
+            } else if(reply.equals("FILE EXISTS")) { 
+                System.out.println("File exists");
+                details_reply = (HashMap<Integer, ArrayList<String>>)input.readObject();
+                output.writeObject("OK"); output.flush();
+            }
             
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();

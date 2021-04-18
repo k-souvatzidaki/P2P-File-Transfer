@@ -129,18 +129,50 @@ public class Tracker {
                             }
                             else if(type.equals("DETAILS")) {
                                 //reply_details()
+                                String reply;
                                 String filename = (String)input.readObject();
-                                output.writeObject("OK"); output.flush(); //confirm
                                 System.out.println("Requested details for file "+filename);
                                 //find peers with requested file
-                                ArrayList<Integer> peers_tokens = files_peers.get(filename);
-                                for(int k: peers_tokens) {
-                                    //checkactive 
-                                    System.out.println(k);
+                                if(!files_peers.containsKey(filename)){
+                                    System.out.println("File doesn't exist");
+                                    output.writeObject("FILE DOESN'T EXIST"); output.flush();
+                                }else {
+                                    System.out.println("File exists");
+                                    output.writeObject("FILE EXISTS"); output.flush();
+                                    ArrayList<Integer> peers_tokens = files_peers.get(filename);
+                                    HashMap<Integer, ArrayList<String>> details_reply = new HashMap<Integer, ArrayList<String>>();
+                                    for(int k: peers_tokens) {
+                                        //ip,port,username,count_downloads, count_failures
+                                        ArrayList<String> details = loggedin_peers.get(k);
+                                        ArrayList<String> temp = registered_peers.get(details.get(2));
+                                        details.add(temp.get(2));
+                                        details.add(temp.get(3));
+                                        
+                                        //checkactive
+                                        try {
+                                            Socket newpeer = new Socket(details.get(0),Integer.parseInt(details.get(1)));
+                                            ObjectOutputStream output2 = new ObjectOutputStream(newpeer.getOutputStream());
+                                            ObjectInputStream input2 = new ObjectInputStream(newpeer.getInputStream());
+                                            output2.writeObject("CHECKACTIVE"); output2.flush();
+                                            reply = (String)input2.readObject(); 
+                                            if(reply.equals("OK")) {
+                                                System.out.println("peer is active");
+                                                //add peer to details reply
+                                                details_reply.put(k,details);
+                                            }
+                                        }catch(ConnectException e) {
+                                            System.out.println("peer is not active");
+                                            //update data structures
+                                            loggedin_peers.remove(k);
+                                            files_peers.get(filename).remove((Integer)k);
+                                        }
+                                    } 
+                                    //send active peer details
+                                    output.writeObject(details_reply); output.flush();
+                                    reply = (String)input.readObject();
+                                    if(reply.equals("OK")) System.out.println("Details sent succesfully");
                                 }
-                                //output.writeObject(file_names); output.flush();
                             }
-
                         }catch(IOException | ClassNotFoundException e) {
                             e.printStackTrace();
                         }

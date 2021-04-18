@@ -55,6 +55,7 @@ public class Tracker {
                             //get message type (REGISTER, LOGIN, .. )
                             String type = (String)input.readObject(); String username,password;
                             System.out.println("Received a new request from a peer : "+type);
+
                             //REGISTER
                             if(type.equals("REGISTER")) {
                                 while(true) {
@@ -109,7 +110,7 @@ public class Tracker {
                                 //add info to hashmaps
                                 loggedin_peers.put(token,new ArrayList<String>(Arrays.asList(ip,port,username)));
                                 for(String s: peer_files){
-                                    file_names.add(s);
+                                    if(!file_names.contains(s)) file_names.add(s);
                                     if(!files_peers.containsKey(s)) files_peers.put(s,new ArrayList<Integer>(Arrays.asList(token)));
                                     else files_peers.get(s).add(token);
                                 }
@@ -117,9 +118,29 @@ public class Tracker {
                                 //check
                                 System.out.println(files_peers);
                                 System.out.println(loggedin_peers);
-                                
+
+                                //confirm
+                                output.writeObject("OK"); output.flush();
                                 
                             }
+                            //REPLY LIST
+                            else if(type.equals("LIST")) {
+                                output.writeObject(file_names); output.flush();
+                            }
+                            else if(type.equals("DETAILS")) {
+                                //reply_details()
+                                String filename = (String)input.readObject();
+                                output.writeObject("OK"); output.flush(); //confirm
+                                System.out.println("Requested details for file "+filename);
+                                //find peers with requested file
+                                ArrayList<Integer> peers_tokens = files_peers.get(filename);
+                                for(int k: peers_tokens) {
+                                    //checkactive 
+                                    System.out.println(k);
+                                }
+                                //output.writeObject(file_names); output.flush();
+                            }
+
                         }catch(IOException | ClassNotFoundException e) {
                             e.printStackTrace();
                         }

@@ -145,12 +145,61 @@ public class Peer {
                         if(option <= 0 || option > all_files.size()) {
                             continue;
                         }else {
-                            details(all_files.get(option-1));
+                            /*ip,port,username,count_downloads, count_failures */
+                            HashMap<Integer,ArrayList<String>> details_reply = details(all_files.get(option-1));
+                            if(details_reply != null) {
+                                simpleDownload(details_reply,all_files.get(option-1));
+                            }
                         }
                     }
                 }   
         }}).start();
     }//start
+
+    /** Simple Download */
+    public void simpleDownload(HashMap<Integer,ArrayList<String>> details_reply ,String file) {
+        long start,end,seconds;
+        int min_peer_token;
+        double temp,min_seconds=Double.MAX_VALUE;
+        Socket peer; boolean flag = false;
+        String reply;
+        //check if all peers are active
+        for(int token : details_reply.keySet()) {
+            if(token != this.token_id) {
+                flag = true;
+                System.out.println("Checking if peer with token "+token+" is active.");
+                start = System.currentTimeMillis();
+                ArrayList<String> temp2 = details_reply.get(token);
+                try {
+                    peer = new Socket(temp2.get(0),Integer.parseInt(temp2.get(1)));
+                    ObjectOutputStream output2 = new ObjectOutputStream(peer.getOutputStream());
+                    ObjectInputStream input2 = new ObjectInputStream(peer.getInputStream());
+                    output2.writeObject("CHECKACTIVE"); output2.flush();
+                    reply = (String)input2.readObject(); 
+                    if(reply.equals("OK")) {
+                        System.out.println("Peer is active");
+                    }
+                } catch(ConnectException e) {
+                    System.out.println("Peer is not active");
+                    flag = false;
+                } catch(IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+                if(flag) {
+                    end = System.currentTimeMillis();
+                    seconds = (end-start)*1000;
+                    temp = Math.pow(0.9,Integer.parseInt(temp2.get(2)))*Math.pow(1.2,Integer.parseInt(temp2.get(3)));
+                    temp*=seconds;
+                    if(temp < min_seconds){
+                        min_seconds = temp;
+                        min_peer_token= token;
+                    }
+                }
+            } 
+        }
+    }
+
+
 
     /** Register to the system */
     public void register() {
@@ -263,11 +312,12 @@ public class Peer {
     }//list
 
     /** Request details of specific file */
-    public void details(String filename) {
+    public HashMap<Integer,ArrayList<String>> details(String filename) {
         System.out.println("Requesting details for file "+filename+". . .");
         Socket tracker; //socket to connect to tracker
         ObjectInputStream input; ObjectOutputStream output; //input and output streams
         String reply;
+        HashMap<Integer, ArrayList<String>> details_reply = null;
         try {
             tracker = new Socket("192.168.2.2",6000);
             //initialize input and output streams to accept messages from peer and reply
@@ -277,7 +327,6 @@ public class Peer {
             output.writeObject("DETAILS"); output.flush(); //send type
             output.writeObject(filename); output.flush(); //send type
             reply = (String)input.readObject();
-            HashMap<Integer, ArrayList<String>> details_reply;
             if(reply.equals("FILE DOESN'T EXIST")) {
                 System.out.println("File doesn't exist");
             } else if(reply.equals("FILE EXISTS")) { 
@@ -288,7 +337,9 @@ public class Peer {
             
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
+            return null;
         }
+        return details_reply;
     }//details
 
 

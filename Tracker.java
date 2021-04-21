@@ -139,7 +139,7 @@ public class Tracker {
                                 }else {
                                     System.out.println("File exists");
                                     output.writeObject("FILE EXISTS"); output.flush();
-                                    ArrayList<Integer> peers_tokens = files_peers.get(filename);
+                                    ArrayList<Integer> peers_tokens = new ArrayList<Integer>(files_peers.get(filename));
                                     HashMap<Integer, ArrayList<String>> details_reply = new HashMap<Integer, ArrayList<String>>();
                                     for(int k: peers_tokens) {
                                         //ip,port,username,count_downloads, count_failures

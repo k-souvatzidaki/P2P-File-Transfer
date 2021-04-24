@@ -1,25 +1,26 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class Tracker {
 
     ServerSocket socket;
     String ip;
     int port;
-    HashMap<String,ArrayList<String>> registered_peers; //key: username, value: (user_name,	password, count_downloads, count_failures)
-    HashMap<Integer,ArrayList<String>> loggedin_peers; //key: token_id, value: 	(ip_address, port,	user_name)
-    ArrayList<String> file_names; //list of all file names
-    HashMap<String,ArrayList<Integer>> files_peers; //key: file name, value: list of token_ids with this file
+    ConcurrentHashMap<String,ArrayList<String>> registered_peers; //key: username, value: (user_name,	password, count_downloads, count_failures)
+    ConcurrentHashMap<Integer,ArrayList<String>> loggedin_peers; //key: token_id, value: 	(ip_address, port,	user_name)
+    List<String> file_names; //list of all file names
+    ConcurrentHashMap<String,ArrayList<Integer>> files_peers; //key: file name, value: list of token_ids with this file
 
     //constructor
     public Tracker(String ip, int port) {
         this.ip = ip;
         this.port = port;
-        registered_peers = new HashMap<String,ArrayList<String>>();
-        loggedin_peers = new HashMap<Integer,ArrayList<String>>();
-        file_names = new ArrayList<String>();
-        files_peers = new HashMap<String,ArrayList<Integer>>();
+        registered_peers = new ConcurrentHashMap<String,ArrayList<String>>();
+        loggedin_peers = new ConcurrentHashMap<Integer,ArrayList<String>>();
+        file_names = Collections.synchronizedList(new ArrayList<String>());
+        files_peers = new ConcurrentHashMap<String,ArrayList<Integer>>();
 
         accept_requests();
     }
@@ -130,6 +131,7 @@ public class Tracker {
                                 for(ArrayList<Integer>  tokens : files_peers.values()) {
                                     if(tokens.contains(temp_token)) tokens.remove((Integer)temp_token);
                                 }
+                                output.writeObject("OK"); output.flush();
                             }
                             //REPLY LIST
                             else if(type.equals("LIST")) {
@@ -197,6 +199,6 @@ public class Tracker {
     }
 
     public static void main(String[] args) {
-        new Tracker("192.168.2.2",6100);
+        new Tracker("192.168.2.2",6000);
     } 
 }

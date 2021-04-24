@@ -8,7 +8,7 @@ public class Peer {
     File[] files; ArrayList<String> file_names;
     int token_id;
     boolean loggedin;
-    ArrayList<String> all_files;
+    List<String> all_files;
 
     /** Constructor */
     public Peer(String ip, int port, String directory) {
@@ -22,6 +22,7 @@ public class Peer {
         if(loggedin) {
             start();
         }
+        System.out.println("end");
     }//Peer
 
     /** Initialize files of peer */
@@ -59,7 +60,7 @@ public class Peer {
     /** Start 2 threads - one to receive requests and one to send requests */
     public void start() {
         //ACCEPT REQUESTS
-        new Thread(new Runnable() {
+        Thread receive = new Thread(new Runnable() {
             @Override
             public void run() {
                 Socket socket; ServerSocket requests;
@@ -97,6 +98,23 @@ public class Peer {
                                         System.out.println("Received a checkactive request");
                                         output.writeObject("OK"); output.flush();
                                     }
+                                    else if(type.equals("FILE")) {
+                                        //TODO add to method
+                                        //send the file
+                                        String requested_file = (String)input.readObject();
+                                        System.out.println(requested_file);
+                                        if(file_names.contains(requested_file)) {
+                                            output.writeObject("FILE EXISTS"); output.flush();
+                                            File f = new File(directory+"\\"+requested_file);
+                                            FileInputStream stream = new FileInputStream(f);
+                                            byte[] file_bytes = new byte[(int)f.length()];
+                                            stream.read(file_bytes);
+                                            System.out.println("Succesfully read file bytes. Sending....");
+                                            output.writeObject(file_bytes); output.flush();
+                                        }else {
+                                            output.writeObject("FILE DOESN'T EXIST"); output.flush();
+                                        }
+                                    }
                                     
                                 }catch(IOException | ClassNotFoundException e) {
                                     e.printStackTrace();
@@ -107,10 +125,11 @@ public class Peer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-        }}).start();
+        }});
+        receive.start();
         
         //SEND REQUESTS
-        new Thread(new Runnable() {
+        Thread send = new Thread(new Runnable() {
             @Override
             public void run() {
                 list();
@@ -128,18 +147,20 @@ public class Peer {
 
                     if(option == 0) {
                         logout();
-                        break;
+                        //TODO receive.destroy();
+                        System.out.println("Stop receive requests thread");
+                        return;
                     } 
                     else {
                         for(int i=1; i <= all_files.size(); i++) {
                             System.out.println(i+") "+all_files.get(i-1));
                         }
                         System.out.println("Choose a file. Press any other key to exit. . . ");
-                        user_input = in.nextLine();
                         while(true) {
+                            user_input = in.nextLine();
                             try {
                                 option = Integer.parseInt(user_input);
-                            }catch(NumberFormatException e) { continue; }
+                            }catch(NumberFormatException e) { System.out.println("Not a number"); continue; }
                             break;
                         }
                         if(option <= 0 || option > all_files.size()) {
@@ -153,17 +174,21 @@ public class Peer {
                         }
                     }
                 }   
-        }}).start();
+        }});
+        send.start();
     }//start
+
 
     /** Simple Download */
     public void simpleDownload(HashMap<Integer,ArrayList<String>> details_reply ,String file) {
         long start,end,seconds;
-        int min_peer_token;
+        int min_peer_token = 0;
         double temp,min_seconds=Double.MAX_VALUE;
         Socket peer; boolean flag = false;
         String reply;
         //check if all peers are active
+        System.out.println(details_reply);
+        TreeMap<Double, Integer> sorted = new TreeMap<Double, Integer>();
         for(int token : details_reply.keySet()) {
             if(token != this.token_id) {
                 flag = true;
@@ -188,17 +213,53 @@ public class Peer {
                 if(flag) {
                     end = System.currentTimeMillis();
                     seconds = (end-start)*1000;
-                    temp = Math.pow(0.9,Integer.parseInt(temp2.get(2)))*Math.pow(1.2,Integer.parseInt(temp2.get(3)));
+                    temp = Math.pow(0.9,Integer.parseInt(temp2.get(3)))*Math.pow(1.2,Integer.parseInt(temp2.get(4)));
                     temp*=seconds;
+                    System.out.println(temp);
+                    if(sorted.containsKey(temp)) temp+=0.1;
+                    sorted.put(temp,token);
+                    /*
                     if(temp < min_seconds){
                         min_seconds = temp;
                         min_peer_token= token;
                     }
+                    */
                 }
             } 
         }
-    }
 
+        System.out.println(sorted);
+
+
+        //TODO
+        while(!sorted.isEmpty()) {
+            //find peer with the minimum response time
+            min_peer_token = sorted.pollFirstEntry().getValue();
+            ArrayList<String> selected_peer = details_reply.get(min_peer_token);
+            System.out.println("Found selected peer: "+selected_peer.get(2));
+
+            try {
+                Socket download = new Socket(selected_peer.get(0),Integer.parseInt(selected_peer.get(1)));
+                ObjectOutputStream output3 = new ObjectOutputStream(download.getOutputStream());
+                ObjectInputStream input3 = new ObjectInputStream(download.getInputStream());
+                output3.writeObject("FILE"); output3.flush();
+                output3.writeObject(file); output3.flush();
+                reply = (String)input3.readObject(); 
+                if(reply.equals("FILE EXISTS")) {
+                    System.out.println("File exists in peer "+selected_peer.get(2));
+                    byte[] file_bytes = (byte[])input3.readObject();
+                    File f = new File(directory+"\\"+file);
+                    FileOutputStream stream = new FileOutputStream(f);
+                    stream.write(file_bytes);
+                    break;
+                }else {
+                    System.out.println("File doesn't exist in peer "+selected_peer.get(2));
+                }
+            }catch(IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
 
     /** Register to the system */
@@ -325,7 +386,7 @@ public class Peer {
             output = new ObjectOutputStream(tracker.getOutputStream());
             input = new ObjectInputStream(tracker.getInputStream());
             output.writeObject("LIST"); output.flush(); //send type
-            all_files = (ArrayList<String>)input.readObject();
+            all_files = (List<String>)input.readObject();
             System.out.println("ok");
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();

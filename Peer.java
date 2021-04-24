@@ -127,7 +127,7 @@ public class Peer {
                     }
 
                     if(option == 0) {
-                        //logout
+                        logout();
                         break;
                     } 
                     else {
@@ -292,6 +292,27 @@ public class Peer {
             e.printStackTrace();
         }
     }//login
+
+    /** Logout from the system */
+    public void logout() {
+        Socket tracker; //socket to connect to tracker
+        ObjectInputStream input; ObjectOutputStream output; //input and output streams
+        String reply;
+        try {
+            tracker = new Socket("192.168.2.2",6000);
+            //initialize input and output streams to accept messages from peer and reply
+            output = new ObjectOutputStream(tracker.getOutputStream());
+            input = new ObjectInputStream(tracker.getInputStream());
+            output.writeObject("LOGOUT"); output.flush(); //send type 
+            output.writeObject(token_id); output.flush();  //send token_id 
+            reply = (String)input.readObject();
+            if(reply.equals("OK")) {
+                System.out.println("Logout successful...");
+            }
+        }catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+    }//logout
 
     /** Request list of all files in p2p system **/
     public void list() {

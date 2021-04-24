@@ -122,6 +122,14 @@ public class Tracker {
                                 //confirm
                                 output.writeObject("OK"); output.flush();
                                 
+                            }//LOGIN
+                            //LOGOUT
+                            else if(type.equals("LOGOUT")) {
+                                int temp_token = (Integer)input.readObject();
+                                loggedin_peers.remove(temp_token);
+                                for(ArrayList<Integer>  tokens : files_peers.values()) {
+                                    if(tokens.contains(temp_token)) tokens.remove((Integer)temp_token);
+                                }
                             }
                             //REPLY LIST
                             else if(type.equals("LIST")) {
@@ -164,7 +172,10 @@ public class Tracker {
                                             System.out.println("peer is not active");
                                             //update data structures
                                             loggedin_peers.remove(k);
-                                            files_peers.get(filename).remove((Integer)k);
+                                            for(ArrayList<Integer>  tokens : files_peers.values()) {
+                                                if(tokens.contains(k)) tokens.remove((Integer)k);
+                                            }
+                                            //files_peers.get(filename).remove((Integer)k);
                                         }
                                     } 
                                     //send active peer details
@@ -186,7 +197,6 @@ public class Tracker {
     }
 
     public static void main(String[] args) {
-        new Tracker("192.168.2.2",6000);
-    }
-
+        new Tracker("192.168.2.2",6100);
+    } 
 }

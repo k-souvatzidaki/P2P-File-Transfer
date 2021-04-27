@@ -136,6 +136,7 @@ public class Tracker {
                 password = (String)input.readObject();
                 if(password.equals(registered_peers.get(username).get(0))) {
                     token = new Random().nextInt();
+                    while(loggedin_peers.containsKey(token)) token = new Random().nextInt();
                     System.out.println("Password accepted! Login Successful. Token for new peer = "+token);
                     output.writeObject(String.valueOf(token)); output.flush();
                     break;

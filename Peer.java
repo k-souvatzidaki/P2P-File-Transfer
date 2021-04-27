@@ -378,7 +378,6 @@ public class Peer {
         for(int token : details_reply.keySet()) {
             if(token != this.token_id) {
                 flag = true;
-                System.out.println("Checking if peer with token "+token+" is active.");
                 start = System.currentTimeMillis();
                 ArrayList<String> temp2 = details_reply.get(token);
                 try {
@@ -391,26 +390,23 @@ public class Peer {
                         System.out.println("Peer is active");
                     }
                 } catch(ConnectException e) {
-                    System.out.println("Peer is not active");
+                    System.out.println("Peer with token "+token+" is not active.");
                     flag = false;
                 } catch(IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
                 if(flag) {
                     end = System.currentTimeMillis();
-                    seconds = (end-start)*1000;
+                    seconds = (end-start)/1000;
                     temp = Math.pow(0.9,Integer.parseInt(temp2.get(3)))*Math.pow(1.2,Integer.parseInt(temp2.get(4)));
                     temp*=seconds;
-                    System.out.println(temp);
                     if(sorted.containsKey(temp)) temp+=0.1;
                     sorted.put(temp,token);
+                    System.out.println("Peer with token "+token+" is active and responded in "+seconds+" seconds. The total factor is "+temp);
                 }
             } 
         }
-        System.out.println(sorted);
 
-
-        //TODO
         boolean done =  false;
         String username;
         while(!sorted.isEmpty()) {
@@ -418,7 +414,7 @@ public class Peer {
             min_peer_token = sorted.pollFirstEntry().getValue();
             ArrayList<String> selected_peer = details_reply.get(min_peer_token);
             username = selected_peer.get(2);
-            System.out.println("Found selected peer: "+username);
+            System.out.println("Selected peer with the minimum response time: "+username);
 
             try {
                 Socket download = new Socket(selected_peer.get(0),Integer.parseInt(selected_peer.get(1)));
@@ -428,7 +424,7 @@ public class Peer {
                 output3.writeObject(file); output3.flush();
                 reply = (String)input3.readObject(); 
                 if(reply.equals("FILE EXISTS")) {
-                    System.out.println("File exists in peer "+selected_peer.get(2));
+                    System.out.println("File exists in peer "+username);
                     byte[] file_bytes = (byte[])input3.readObject();
                     File f = new File(shared_directory+"\\"+file);
                     FileOutputStream stream = new FileOutputStream(f);

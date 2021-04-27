@@ -1,3 +1,6 @@
+/* Konstantina Souvatzidaki, 3170149
+ * Lydia Athanasiou, 3170003 */
+
 import java.net.*;
 import java.io.*;
 import java.util.*;
@@ -33,7 +36,7 @@ public class Tracker {
             Socket peer; 
             while(true) {
                 peer = socket.accept();
-                System.out.println("New request!");
+                System.out.println();
 
                 //new thread for each request
                 new Thread(new Runnable(){
@@ -163,6 +166,7 @@ public class Tracker {
 
 
             //inform all peers for the new files
+            System.out.println("All logged-in peers currently: ");
             System.out.println(loggedin_peers);
             for(ArrayList<String> peer_details : loggedin_peers.values()) {
                 if(!peer_details.get(1).equals(port)) {
@@ -184,6 +188,7 @@ public class Tracker {
     public void logout(ObjectInputStream input, ObjectOutputStream output) {
         try {
             int temp_token = (Integer)input.readObject();
+            System.out.println("Logging out from peer with token id = "+temp_token);
             loggedin_peers.remove(temp_token);
             for(ArrayList<Integer>  tokens : files_peers.values()) {
                 if(tokens.contains(temp_token)) tokens.remove((Integer)temp_token);
@@ -199,6 +204,7 @@ public class Tracker {
     public void reply_list(ObjectOutputStream output) {
         try {
             output.writeObject(file_names); output.flush();
+            System.out.println("List of all files sent successfully!");
         }catch(IOException e) {
             e.printStackTrace();
         }   
@@ -271,10 +277,8 @@ public class Tracker {
                 System.out.println("Peer with token "+peer_token+" has successfully received file "+file_name+" from peer with username "+peer_username);
                 files_peers.get(file_name).add(peer_token);
                 int count_downloads = Integer.parseInt(registered_peers.get(peer_username).get(1));
-                System.out.println(registered_peers.get(peer_username).get(1));
                 count_downloads++;
                 registered_peers.get(peer_username).set(1,String.valueOf(count_downloads));
-                System.out.println(registered_peers.get(peer_username).get(1));
             }else {
                 System.out.println("Peer with token "+peer_token+" tried to receive file "+file_name+" from peer with username "+peer_username +" but failed");
                 int count_failures = Integer.parseInt(registered_peers.get(peer_username).get(2));

@@ -11,10 +11,10 @@ public class Tracker {
     ServerSocket socket;
     String ip;
     int port;
-    ConcurrentHashMap<String,ArrayList<String>> registered_peers; //key: username, value: (password, count_downloads, count_failures)
+    ConcurrentHashMap<String,ArrayList<String>> registered_peers; //key: username, value: (password, count_downloads, count_failures,pieces,seeder_bit)
     ConcurrentHashMap<Integer,ArrayList<String>> loggedin_peers; //key: token_id, value: 	(ip_address, port,	user_name)
     List<String> file_names; //list of all file names
-    ConcurrentHashMap<String,ArrayList<Integer>> files_peers; //key: file name, value: list of token_ids with this file
+    ConcurrentHashMap<String,ArrayList<Integer>> files_peers; //key: file name, value: list of token_ids with chunks of this file
 
     //constructor
     public Tracker(String ip, int port) {
@@ -148,7 +148,7 @@ public class Tracker {
                     output.writeObject("DECLINED"); output.flush();
                 }
             }
-    
+            //INFORM
             String ip = (String)input.readObject();
             String port = (String)input.readObject();
             ArrayList<String> peer_files = (ArrayList<String>)input.readObject();
@@ -227,12 +227,14 @@ public class Tracker {
                 ArrayList<Integer> peers_tokens = new ArrayList<Integer>(files_peers.get(filename));
                 HashMap<Integer, ArrayList<String>> details_reply = new HashMap<Integer, ArrayList<String>>();
                 for(int k: peers_tokens) {
-                    //ip,port,username,count_downloads, count_failures
+                    //ip,port,username,count_downloads, count_failures, {pieces}, seeder_bit
                     ArrayList<String> details = loggedin_peers.get(k);
                     ArrayList<String> temp = registered_peers.get(details.get(2));
                     details.add(temp.get(1));
                     details.add(temp.get(2));
-                    
+                    details.add(temp.get(3));
+                    details.add(temp.get(4));
+
                     //checkactive
                     try {
                         Socket newpeer = new Socket(details.get(0),Integer.parseInt(details.get(1)));

@@ -15,6 +15,7 @@ public class Peer {
     List<String> all_files; //list of all file names in the p2p system
     ServerSocket requests; //socket to accept requests from tracker and other peers
     int tracker_port; //port of the tracker 
+    boolean is_seeder;
 
     /** Constructor */
     public Peer(String ip, int port, String shared_directory, int tracker_port) {
@@ -23,6 +24,7 @@ public class Peer {
         this.shared_directory = shared_directory;
         this.tracker_port = tracker_port;
         loggedin = false;
+        is_seeder = false;
         token_id = 0;
         init();
         connect();
@@ -36,7 +38,12 @@ public class Peer {
         File dir = new File(shared_directory);
         File[] files = dir.listFiles();
         for (File f : files) {
-            file_names.add(f.getName());
+            if(f.getName().endsWith(".mp3")) {
+                is_seeder = true;
+                file_names.add(f.getName());
+                //chunk file
+                partition(f);
+            }
         }                                                 
     }//init
 
@@ -252,13 +259,16 @@ public class Peer {
                     break;
                 }
             }
+
             //INFORM 
             output.writeObject(ip); output.flush();
             output.writeObject(String.valueOf(port)); output.flush();
-            output.writeObject(file_names); output.flush();
-            reply = (String)input.readObject();
-            if(reply.equals("OK")) System.out.println("Informed tracker about ip,port and files on this peer!");
-
+            if(is_seeder) {
+                output.writeObject(file_names); output.flush();
+                reply = (String)input.readObject();
+                if(reply.equals("OK")) System.out.println("Informed tracker about ip,port and files on this peer!");
+            }
+            
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
         }
@@ -473,6 +483,31 @@ public class Peer {
                 System.out.println("Notification sent succesfully!\n");
             }
         } catch(IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+    }
+
+    //new methods (Phase 2)
+    /** Partition */
+    public void partition(File file) {
+        int chunk_num = 1;
+        int sizeOfChunk = 1024 * 512;// 0.5MB = 512KB
+        byte[] buffer = new byte[sizeOfChunk];
+    
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            FileOutputStream fos;
+            for (int i = 0; i < file.length(); i += sizeOfChunk) {
+                int m = fis.read(buffer);
+                //write file chunk  
+                File directory = new File(shared_directory+"\\chunks");
+                if(!directory.exists()) directory.mkdir();
+                File output = new File(directory, chunk_num+"_"+file.getName());
+                fos = new FileOutputStream(output);
+                fos.write(buffer);
+                chunk_num++;
+            }
+        }catch(IOException e) {
             e.printStackTrace();
         }
     }

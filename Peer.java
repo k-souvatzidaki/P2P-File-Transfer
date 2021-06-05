@@ -1,10 +1,6 @@
-/* Konstantina Souvatzidaki, 3170149
- * Lydia Athanasiou, 3170003 */
-
 import java.util.*;
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.*;
 
 public class Peer {
     String shared_directory,ip; //shared directory of peer and ip address of the system
@@ -76,6 +72,7 @@ public class Peer {
                     requests = new ServerSocket(port,20);
                     while(true) {
                         socket = requests.accept();
+                        System.out.println("New request!");
 
                         //new thread for each request
                         new Thread(new Runnable(){
@@ -210,7 +207,6 @@ public class Peer {
             System.out.println("Insert password: ");
             user_input = in.nextLine();
             output.writeObject(user_input); output.flush();
-            System.out.println("Register was successful!\n");
             login_and_inform();
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
@@ -255,7 +251,7 @@ public class Peer {
                 }else {
                     token_id = Integer.parseInt(reply);
                     loggedin = true;
-                    System.out.println("Password correct! Session token of peer: "+token_id+"\n");
+                    System.out.println("Password correct! Session token of peer: "+token_id);
                     break;
                 }
             }
@@ -288,7 +284,7 @@ public class Peer {
             output.writeObject(token_id); output.flush();  //send token_id 
             reply = (String)input.readObject();
             if(reply.equals("OK")) {
-                System.out.println("Logout successful!\n");
+                System.out.println("Logout successful!");
             }
         }catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
@@ -307,7 +303,6 @@ public class Peer {
             input = new ObjectInputStream(tracker.getInputStream());
             output.writeObject("LIST"); output.flush(); //send type
             all_files = (List<String>)input.readObject();
-            System.out.println("Seccessfully received a list of all files!\n");
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
         }
@@ -331,12 +326,10 @@ public class Peer {
             output.writeObject(filename); output.flush(); //send type
             reply = (String)input.readObject();
             if(reply.equals("FILE DOESN'T EXIST")) {
-                System.out.println("File doesn't exist in p2p system.\n");
+                System.out.println("File doesn't exist");
             } else if(reply.equals("FILE EXISTS")) { 
-                System.out.println("File exists! Receiving details. . .");
+                System.out.println("File exists");
                 details_reply = (HashMap<Integer, ArrayList<String>>)input.readObject();
-                System.out.println("Received details. Peers that have the file:");
-                System.out.println(details_reply+"\n");
                 output.writeObject("OK"); output.flush();
             }
         } catch(IOException | ClassNotFoundException e){
@@ -360,15 +353,13 @@ public class Peer {
                 byte[] file_bytes = new byte[(int)f.length()];
                 stream.read(file_bytes);
                 System.out.println("Succesfully read file bytes. Sending....");
-                System.out.println("Sleeping for a while, to simulate download time. . . ");
-                TimeUnit.SECONDS.sleep(10);
                 output.writeObject(file_bytes); output.flush();
-                System.out.println("Sent! \n");
+                System.out.println("Sent.");
             }else {
-                System.out.println("File not found.\n");
+                System.out.println("File not found.");
                 output.writeObject("FILE DOESN'T EXIST"); output.flush();
             }
-        }catch(IOException | ClassNotFoundException |InterruptedException e) {
+        }catch(IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
@@ -378,7 +369,6 @@ public class Peer {
     public void checkactive(ObjectOutputStream output) {
         try {
             output.writeObject("OK"); output.flush();
-            System.out.println("Successfully replied to CHECKACTIVE request!\n");
         }catch(IOException e) {
             e.printStackTrace();
         }
@@ -393,6 +383,7 @@ public class Peer {
         Socket peer; boolean flag = false;
         String reply;
         //check if all peers are active
+        System.out.println(details_reply);
         TreeMap<Double, Integer> sorted = new TreeMap<Double, Integer>();
         for(int token : details_reply.keySet()) {
             if(token != this.token_id) {
@@ -405,21 +396,23 @@ public class Peer {
                     ObjectInputStream input2 = new ObjectInputStream(peer.getInputStream());
                     output2.writeObject("CHECKACTIVE"); output2.flush();
                     reply = (String)input2.readObject(); 
-                    if(reply.equals("OK")) { }
+                    if(reply.equals("OK")) {
+                        System.out.println("Peer is active");
+                    }
                 } catch(ConnectException e) {
-                    System.out.println("Peer with token "+token+" is not active!");
+                    System.out.println("Peer with token "+token+" is not active.");
                     flag = false;
                 } catch(IOException | ClassNotFoundException e) {
                     e.printStackTrace();
                 }
                 if(flag) {
                     end = System.currentTimeMillis();
-                    seconds = (end-start);
+                    seconds = (end-start)/1000;
                     temp = Math.pow(0.9,Integer.parseInt(temp2.get(3)))*Math.pow(1.2,Integer.parseInt(temp2.get(4)));
                     temp*=seconds;
                     if(sorted.containsKey(temp)) temp+=0.1;
                     sorted.put(temp,token);
-                    System.out.println("Peer with token "+token+" is active and responded in "+seconds+". The total factor is "+temp);
+                    System.out.println("Peer with token "+token+" is active and responded in "+seconds+" seconds. The total factor is "+temp);
                 }
             } 
         }
@@ -431,7 +424,7 @@ public class Peer {
             min_peer_token = sorted.pollFirstEntry().getValue();
             ArrayList<String> selected_peer = details_reply.get(min_peer_token);
             username = selected_peer.get(2);
-            System.out.println("\nSelected peer with the minimum response time: "+username);
+            System.out.println("Selected peer with the minimum response time: "+username);
 
             try {
                 Socket download = new Socket(selected_peer.get(0),Integer.parseInt(selected_peer.get(1)));
@@ -448,18 +441,17 @@ public class Peer {
                     stream.write(file_bytes);
                     done = true;
                     file_names.add(file);
-                    System.out.println("File successfully downloaded from peer "+username);
                     send_notify(file,username,true);
                     break;
                 }else {
                     System.out.println("File doesn't exist in peer "+username);
                 }
             }catch(IOException | ClassNotFoundException e) {
-                System.out.println("File transfer with peer "+username+" failed! \n");
+                System.out.println("File transfer with peer "+username+" failed.");
                 send_notify(file,username,false);
             }
         }
-        if(!done) System.out.println("File wasn't found in any peer. \n");
+        if(!done) System.out.println("File wasn't found in any peer");
     }
 
 
@@ -472,7 +464,7 @@ public class Peer {
             ObjectInputStream input = new ObjectInputStream(tracker.getInputStream());
             output.writeObject("NOTIFY"); output.flush(); //send type 
 
-            System.out.println("Notifying tracker about file transfer!");
+            System.out.println("Notifying tracker about file transfer");
             output.writeObject(sent); output.flush();
             output.writeObject(file_sent); output.flush();
             output.writeObject(token_id); output.flush();
@@ -480,7 +472,7 @@ public class Peer {
 
             String reply = (String)input.readObject();
             if(reply.equals("OK")) {
-                System.out.println("Notification sent succesfully!\n");
+                System.out.println("Notification sent succesfully!");
             }
         } catch(IOException | ClassNotFoundException e){
             e.printStackTrace();
